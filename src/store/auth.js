@@ -1,4 +1,5 @@
-import axios from 'axios'; // Or import your custom api wrapper: import api from '@/utils/api';
+import api from '@/utils/axios';
+import axios from 'axios'; // Or import your custom api wrapper
 import { defineStore } from 'pinia';
 import { reactive } from 'vue';
 import { useRouter } from 'vue-router';
@@ -22,16 +23,25 @@ export const useAuthStore = defineStore('auth', () => {
         id: null,
         name: '',
         email: '',
-        role: '',
         avatar: null,
         bio: '',
-        phone: ''
+        phone: '',
+        role: '',
+        permissions: ['user.delete'] // Example permission for testing
     });
 
     // --------------------------------------------------
     // 2. GETTERS
     // --------------------------------------------------
     const hasRole = (roleName) => user.role === roleName;
+
+    const checkPermission = (requiredPermission) => {
+        if (Array.isArray(requiredPermission)) {
+            return requiredPermission.some((p) => user.permissions.includes(p));
+        }
+
+        return user.permissions.includes(requiredPermission);
+    };
 
     // --------------------------------------------------
     // 3. INTERNAL HELPERS
@@ -51,6 +61,36 @@ export const useAuthStore = defineStore('auth', () => {
     // --------------------------------------------------
 
     // A. Session Management
+
+    // src/store/auth.js
+
+    // src/stores/auth.js
+
+    const login = async (credentials) => {
+        try {
+            const response = await api.post('/v1/iam/auth/login', credentials);
+
+            if (response.data && response.data.dataPayload) {
+                const token = response.data.dataPayload.data.access_token;
+                setToken(token);
+
+                // Update user state
+                user.username = credentials.username;
+                user.isAuthenticated = true;
+            }
+        } catch (error) {
+            // 1. Log the error for debugging
+            console.group('❌ Auth Store Login Failed');
+            console.error('Full Error Object:', error);
+            console.log('Response Status:', error.response?.status);
+            console.log('Response Data:', error.response?.data);
+            console.groupEnd();
+
+            // 2. CRITICAL: Throw it again!
+            // If you don't do this, the Login.vue component will think login succeeded.
+            throw error;
+        }
+    };
     const validateSession = async () => {
         if (!user.token) return;
 
@@ -132,6 +172,7 @@ export const useAuthStore = defineStore('auth', () => {
             // Mock Simulation
             await new Promise((resolve) => setTimeout(resolve, 1000));
             console.log(`Password changed`);
+            console.log(`Current: ${currentPass}, New: ${newPass}`);
             return true;
         } catch (error) {
             console.warn('Failed to change password', error);
@@ -142,11 +183,13 @@ export const useAuthStore = defineStore('auth', () => {
     return {
         user,
         hasRole,
+        checkPermission,
         validateSession,
         fetchProfile,
         updateProfile,
         changePassword,
         logout,
-        setToken // Exported in case Login page needs to set it manually
+        setToken,
+        login
     };
 });

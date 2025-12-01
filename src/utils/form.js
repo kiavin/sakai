@@ -6,17 +6,24 @@
 export function setApiErrors(error, setErrors) {
     // 1. Check if it's actually a validation error (422)
     if (error.response && error.response.status === 422) {
-        // 2. Extract the 'errors' object from the response
-        // Laravel/Standard format: { "errors": { "email": ["Taken"], "password": ["Too short"] } }
-        const backendErrors = error.response.data.errors || {};
+        // Adjust path based on your specific API response structure
+        const backendErrors = error.response.data.errorPayload?.errors || error.response.data.errors || {};
 
-        // 3. Transform format for VeeValidate
-        // VeeValidate expects: { email: "Taken", password: "Too short" } (Strings, not arrays)
+        console.log('Backend Validation Errors:', backendErrors);
+
         const formErrors = {};
 
         Object.keys(backendErrors).forEach((key) => {
-            // Take the first error message from the array
-            formErrors[key] = backendErrors[key][0];
+            const errorValue = backendErrors[key];
+
+            // FIX: Check if it's an array or a string
+            if (Array.isArray(errorValue)) {
+                // It's an array (Laravel style): ["Error message"] -> Take the first one
+                formErrors[key] = errorValue[0];
+            } else {
+                // It's a plain string: "Error message" -> Take it directly
+                formErrors[key] = errorValue;
+            }
         });
 
         // 4. Push errors to the form

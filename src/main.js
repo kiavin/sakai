@@ -13,6 +13,9 @@ import ConfirmationService from 'primevue/confirmationservice';
 import DialogService from 'primevue/dialogservice';
 import ToastService from 'primevue/toastservice';
 
+//directives
+import { vCan } from '@/directives/v-can';
+
 //nprogess styles
 import '@/assets/styles.scss';
 import '@/assets/tailwind.css';
@@ -31,5 +34,6 @@ app.use(PrimeVue, {
 app.use(ToastService);
 app.use(DialogService);
 app.use(ConfirmationService);
+app.directive('can', vCan); // Usage: v-can="..."
 
 app.mount('#app');

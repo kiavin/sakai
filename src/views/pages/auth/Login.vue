@@ -1,9 +1,48 @@
 <script setup>
+import { useAuthStore } from '@/store/auth';
+import { setApiErrors } from '@/utils/form'; // 2. Import your utility
+import { useForm } from 'vee-validate'; // 1. Import VeeValidate
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 
-const email = ref('');
-const password = ref('');
+const router = useRouter();
+const authStore = useAuthStore();
+const loading = ref(false);
 const checked = ref(false);
+
+// 3. Initialize Form (No schema needed for backend-only validation)
+const { defineField, handleSubmit, errors, setErrors } = useForm();
+
+// 4. Bind Fields (These replace the old refs)
+const [username, usernameProps] = defineField('username');
+const [password, passwordProps] = defineField('password');
+
+// 5. Submit Handler
+const submit = handleSubmit(async (values) => {
+    loading.value = true;
+
+    try {
+        // authStore.login needs to throw an error if 401/422 happens
+        await authStore.login({
+            username: values.username,
+            password: values.password
+        });
+
+        console.log('Login successful');
+
+        // Redirect on success
+        router.push({ path: '/' });
+    } catch (error) {
+        console.error('Login Error:', error);
+        // 6. THE MAGIC: Inject backend errors into the UI
+        setApiErrors(error, setErrors);
+        console.error('Login Error:', error);
+
+        // If it's a generic error (not 422), the global interceptor shows a Toast
+    } finally {
+        loading.value = false;
+    }
+});
 </script>
 
 <template>
@@ -34,11 +73,13 @@ const checked = ref(false);
                     </div>
 
                     <div>
-                        <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
-                        <InputText id="email1" type="text" placeholder="Email address" class="w-full md:w-120 mb-8" v-model="email" />
+                        <label for="username1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Username</label>
+                        <InputText id="username1" type="text" placeholder="username" class="w-full md:w-120 mb-2" v-model="username" v-bind="usernameProps" :class="{ 'p-invalid': errors.username }" />
+                        <small class="text-red-500 block mb-6" v-if="errors.username">{{ errors.username }}</small>
 
                         <label for="password1" class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">Password</label>
-                        <Password id="password1" v-model="password" placeholder="Password" :toggleMask="true" class="mb-4" fluid :feedback="false"></Password>
+                        <Password id="password1" v-model="password" v-bind="passwordProps" placeholder="Password" :toggleMask="true" class="w-full mb-2" inputClass="w-full" :feedback="false" :class="{ 'p-invalid': errors.password }"></Password>
+                        <small class="text-red-500 block mb-4" v-if="errors.password">{{ errors.password }}</small>
 
                         <div class="flex items-center justify-between mt-2 mb-8 gap-8">
                             <div class="flex items-center">
@@ -47,7 +88,8 @@ const checked = ref(false);
                             </div>
                             <router-link to="/auth/forgot-password" class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">Forgot password?</router-link>
                         </div>
-                        <Button label="Sign In" class="w-full" as="router-link" to="/"></Button>
+
+                        <Button label="Sign In" class="w-full" @click="submit" :loading="loading"></Button>
                     </div>
                 </div>
             </div>

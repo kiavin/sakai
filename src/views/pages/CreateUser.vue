@@ -1,32 +1,38 @@
+<!-- use this as a reference to creating a form
+with vee-validate and primevue components
+and handling api errors -->
+
 <script setup>
 import api from '@/utils/axios';
 import { setApiErrors } from '@/utils/form';
-import { toTypedSchema } from '@vee-validate/zod';
+// import { toTypedSchema } from '@vee-validate/zod';
 import { useToast } from 'primevue/usetoast';
 import { useForm } from 'vee-validate';
 import { ref } from 'vue';
-import * as z from 'zod';
+// import * as z from 'zod';
 
 const toast = useToast();
 const loading = ref(false);
 
 // 1. DEFINE VALIDATION SCHEMA (Client Side)
 // This runs immediately as the user types or blurs
-const validationSchema = toTypedSchema(
-    z.object({
-        name: z.string().min(2, 'Name is too short'),
-        email: z.string().email('Invalid email format'),
-        role: z.string().min(1, 'Role is required')
-    })
-);
+// const validationSchema = toTypedSchema(
+//     z.object({
+//         name: z.string().min(2, 'Name is too short'),
+//         email: z.string().email('Invalid email format'),
+//         role: z.string().min(1, 'Role is required')
+//     })
+// );
 
 // 2. INITIALIZE FORM
 // 'defineField' creates the bindings for PrimeVue v-model
 // 'handleSubmit' wraps your function in validation logic
 // 'setErrors' is what we use to inject backend errors
-const { defineField, handleSubmit, errors, setErrors } = useForm({
-    validationSchema
-});
+// const { defineField, handleSubmit, errors, setErrors } = useForm({
+//     validationSchema
+// }); if you wanna use zod schema i.e frontend validation
+
+const { defineField, handleSubmit, errors, setErrors } = useForm({}); // if you wanna skip frontend validation
 
 // 3. BIND FIELDS
 const [name, nameProps] = defineField('name');

@@ -2,10 +2,10 @@ import router from '@/router';
 import { useAuthStore } from '@/store/auth.js';
 import axios from 'axios';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL;
+// const baseURL = import.meta.env.VITE_API_BASE_URL;
 
 const api = axios.create({
-    baseURL,
+    // baseURL,
     withCredentials: true,
     timeout: 30000
 });
@@ -28,6 +28,19 @@ const getStores = () => {
     return {
         auth: useAuthStore()
     };
+};
+
+const handleAlertify = (response) => {
+    // Check if response exists and has the specific payload
+    const payload = response?.data?.alertifyPayload;
+
+    if (payload) {
+        window.dispatchEvent(
+            new CustomEvent('api-notification', {
+                detail: payload
+            })
+        );
+    }
 };
 
 // =========================
@@ -55,6 +68,8 @@ api.interceptors.request.use(
 // =========================
 api.interceptors.response.use(
     (response) => {
+        // [NEW] Check for Success Alerts (e.g., "Saved Successfully")
+        handleAlertify(response);
         return response;
     },
     async (error) => {
@@ -71,6 +86,10 @@ api.interceptors.response.use(
                 })
             );
             return Promise.reject(error);
+        }
+
+        if (error.response) {
+            handleAlertify(error.response);
         }
 
         // [NEW] 5. Handle 500 Server Errors Globaly
@@ -107,7 +126,7 @@ api.interceptors.response.use(
 
             try {
                 // [MODIFICATION] Use baseURL explicitly to avoid relative path issues
-                const response = await axios.post(`${baseURL}/v1/iam/auth/refresh`, null, {
+                const response = await axios.post(`/v1/iam/auth/refresh`, null, {
                     withCredentials: true
                 });
 
