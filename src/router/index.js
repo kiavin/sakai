@@ -1,6 +1,5 @@
 import AppLayout from '@/layout/AppLayout.vue';
 import { createRouter, createWebHistory } from 'vue-router';
-
 const router = createRouter({
     history: createWebHistory(),
     routes: [
@@ -12,6 +11,21 @@ const router = createRouter({
                     path: '/',
                     name: 'dashboard',
                     component: () => import('@/views/Dashboard.vue')
+                },
+                {
+                    path: '/admin/settings',
+                    name: 'adminSettings',
+                    component: () => import('@/views/pages/admin/AdminSettings.vue')
+                },
+                {
+                    path: '/user/profile',
+                    name: 'userProfile',
+                    component: () => import('@/views/pages/UserProfile.vue')
+                },
+                {
+                    path: '/user/create',
+                    name: 'createUser',
+                    component: () => import('@/views/pages/CreateUser.vue')
                 }
             ]
         },
@@ -25,6 +39,16 @@ const router = createRouter({
             path: '/auth/login',
             name: 'login',
             component: () => import('@/views/pages/auth/Login.vue')
+        },
+        {
+            path: '/auth/forgot-password',
+            name: 'forgotPassword',
+            component: () => import('@/views/pages/auth/ForgotPassword.vue')
+        },
+        {
+            path: '/auth/reset-password',
+            name: 'resetPassword',
+            component: () => import('@/views/pages/auth/ResetPassword.vue')
         },
         {
             path: '/auth/access',

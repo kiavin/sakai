@@ -1,8 +1,56 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
-import AppConfigurator from './AppConfigurator.vue';
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 
+const router = useRouter();
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
+const menu = ref(null);
+const items = ref([
+    {
+        label: 'Account',
+        items: [
+            {
+                label: 'Profile',
+                icon: 'pi pi-user',
+                command: () => {
+                    router.push('/user/profile');
+                }
+            },
+            {
+                label: 'Settings',
+                icon: 'pi pi-cog',
+                command: () => {
+                    router.push('/admin/settings');
+                }
+            }
+        ]
+    },
+    {
+        label: 'Actions',
+        items: [
+            {
+                label: 'Logout',
+                icon: 'pi pi-sign-out',
+                command: () => {
+                    handleLogout();
+                }
+            }
+        ]
+    }
+]);
+const toggle = (event) => {
+    menu.value.toggle(event);
+};
+
+const handleLogout = () => {
+    // 1. Clear State (Example)
+    // authStore.logout();
+    localStorage.removeItem('user_session');
+
+    // 2. Redirect
+    router.push('/auth/login');
+};
 </script>
 
 <template>
@@ -39,16 +87,6 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
                 </button>
-                <div class="relative">
-                    <button
-                        v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
-                        type="button"
-                        class="layout-topbar-action layout-topbar-action-highlight"
-                    >
-                        <i class="pi pi-palette"></i>
-                    </button>
-                    <AppConfigurator />
-                </div>
             </div>
 
             <button
@@ -61,17 +99,15 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
                     <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-calendar"></i>
-                        <span>Calendar</span>
-                    </button>
-                    <button type="button" class="layout-topbar-action">
                         <i class="pi pi-inbox"></i>
                         <span>Messages</span>
                     </button>
-                    <button type="button" class="layout-topbar-action">
+                    <button type="button" class="layout-topbar-action" @click="toggle" aria-haspopup="true" aria-controls="overlay_menu">
                         <i class="pi pi-user"></i>
                         <span>Profile</span>
                     </button>
+
+                    <Menu ref="menu" id="overlay_menu" :model="items" :popup="true" />
                 </div>
             </div>
         </div>

@@ -2,3 +2,20 @@
 @use 'primeicons/primeicons.css';
 @use '@/assets/layout/layout.scss';
 @use '@/assets/demo/demo.scss';
+
+/* Override NProgress Color to match PrimeVue Theme */
+#nprogress .bar {
+    background: var(--primary-color) !important; /* Uses your dynamic theme color */
+    height: 3px !important; /* Make it slightly thicker */
+}
+
+#nprogress .peg {
+    box-shadow:
+        0 0 10px var(--primary-color),
+        0 0 5px var(--primary-color) !important;
+}
+
+/* Optional: Hide the spinner if you want a cleaner look */
+#nprogress .spinner {
+    display: none;
+}
