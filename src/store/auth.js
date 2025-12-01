@@ -119,6 +119,7 @@ export const useAuthStore = defineStore('auth', () => {
             Object.assign(user, formData);
             return true;
         } catch (error) {
+            console.warn(error);
             throw error; // Let the component handle the error toast
         }
     };
@@ -133,6 +134,7 @@ export const useAuthStore = defineStore('auth', () => {
             console.log(`Password changed`);
             return true;
         } catch (error) {
+            console.warn('Failed to change password', error);
             throw error;
         }
     };
