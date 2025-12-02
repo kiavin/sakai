@@ -10,7 +10,7 @@ const handleReload = () => {
 </script>
 
 <template>
-    <BaseDataTable endpoint="/v1/iam/rbac/permission" title="Appointment Schedule">
+    <BaseDataTable endpoint="/v1/scheduler/appointments" title="Appointment Schedule">
         <!-- ACTIONS HEADER SLOT (Optional) -->
         <template #header-actions>
             <Button label="New" icon="pi pi-plus" size="small" />

@@ -8,42 +8,43 @@ export function useServerDataTable(endpoint) {
 
     // 1. STATE
     const data = ref([]);
-    const columns = ref([]); // [NEW] Stores the auto-detected column definitions
+    const columns = ref([]);
     const totalRecords = ref(0);
     const loading = ref(false);
 
-    // 2. PARAMS (Hydrate from URL or Defaults)
+    // 2. PARAMS
+    // src/composables/useServerDataTable.js
+
+    // ...
     const lazyParams = ref({
         first: Number(route.query.first) || 0,
         rows: Number(route.query['per-page']) || 10,
         sortField: route.query.sortField || null,
         sortOrder: Number(route.query.sortOrder) || null,
         filters: {
+            // CHANGE THIS: Ensure 'value' is undefined, not null, if empty
             global: { value: route.query['_q'] || null, matchMode: 'contains' }
         }
     });
+    // ...
 
     // 3. FETCH LOGIC
     const loadData = async () => {
         loading.value = true;
 
         try {
-            // Calculation: Convert "First Row Index" to "Page Number"
             const page = Math.floor(lazyParams.value.first / lazyParams.value.rows) + 1;
 
-            // Construct API Params
             const apiParams = {
                 page: page,
                 'per-page': lazyParams.value.rows
             };
 
-            // Add Search Query ONLY if it exists
             const searchQuery = lazyParams.value.filters?.global?.value;
             if (searchQuery && searchQuery.trim() !== '') {
                 apiParams['_q'] = searchQuery;
             }
 
-            // Add Sort/Order ONLY if active
             if (lazyParams.value.sortField) {
                 apiParams['sort'] = lazyParams.value.sortField;
                 apiParams['order'] = lazyParams.value.sortOrder === 1 ? 'asc' : 'desc';
@@ -52,40 +53,64 @@ export function useServerDataTable(endpoint) {
             const response = await api.get(endpoint, { params: apiParams });
 
             // 4. MAP RESPONSE
-            // Adjust this path based on your specific API structure (e.g., response.data.dataPayload)
-            const payload = response.data.dataPayload || response.data;
+            // Safely locate the payload wrapper
+            const rawData = response.data;
+            const payload = rawData.dataPayload || rawData || {};
 
-            data.value = payload.data || [];
-            totalRecords.value = payload.totalCount || 0;
+            console.groupCollapsed(`[DataTable] Loaded Page ${page}`);
+            console.log('Raw Payload:', payload);
 
-            // 5. [NEW] AUTO-GENERATE COLUMNS logic
-            // We only run this if columns aren't defined yet and we have data to inspect
+            // --- SAFEFGUARDED ASSIGNMENT ---
+            let incomingRows = [];
+
+            // Check payload.data first
+            if (payload.data) {
+                if (Array.isArray(payload.data)) {
+                    // Standard Array
+                    incomingRows = payload.data;
+                } else if (typeof payload.data === 'object') {
+                    // FIX: API returned Object (e.g. {10: {...}, 11: {...}}) instead of Array
+                    // We force convert it back to an Array
+                    incomingRows = Object.values(payload.data);
+                }
+            }
+            // Fallback: Payload itself is the list
+            else if (Array.isArray(payload)) {
+                incomingRows = payload;
+            }
+
+            // Use spread syntax to ensure we create a fresh array reference
+            data.value = [...incomingRows];
+
+            // Extract totals
+            totalRecords.value = payload.totalCount || payload.total || data.value.length || 0;
+
+            console.log('Assigned Rows:', data.value.length);
+            console.groupEnd();
+
+            // 5. AUTO-GENERATE COLUMNS
             if (columns.value.length === 0 && data.value.length > 0) {
                 const firstItem = data.value[0];
-
-                // Keys we generally don't want to show in the UI by default
                 const ignoredKeys = ['id', 'uuid', 'password', 'deleted_at', 'paginationLinks', 'meta', 'links'];
 
                 columns.value = Object.keys(firstItem)
                     .filter((key) => !ignoredKeys.includes(key))
                     .map((key) => ({
                         field: key,
-                        // Formats "rule_name" -> "Rule Name"
                         header: key
                             .replace(/_/g, ' ')
-                            .replace(/([a-z])([A-Z])/g, '$1 $2') // Splits camelCase
-                            .replace(/\b\w/g, (l) => l.toUpperCase()) // Capitalize Words
+                            .replace(/([a-z])([A-Z])/g, '$1 $2')
+                            .replace(/\b\w/g, (l) => l.toUpperCase())
                     }));
             }
 
             // 6. SYNC TO BROWSER URL
             const queryParams = {
                 ...route.query,
-                first: lazyParams.value.first,
+                page: page,
                 'per-page': lazyParams.value.rows
             };
 
-            // Only update URL with params that exist
             if (apiParams['_q']) queryParams['_q'] = apiParams['_q'];
             else delete queryParams['_q'];
 
@@ -100,6 +125,8 @@ export function useServerDataTable(endpoint) {
             router.replace({ query: queryParams });
         } catch (error) {
             console.error('DataTable Error:', error);
+            data.value = [];
+            totalRecords.value = 0;
         } finally {
             loading.value = false;
         }
