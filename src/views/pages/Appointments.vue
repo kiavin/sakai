@@ -10,7 +10,7 @@ const handleReload = () => {
 </script>
 
 <template>
-    <BaseDataTable endpoint="/v1/scheduler/appointments" title="Appointment Schedule">
+    <BaseDataTable endpoint="/v1/iam/rbac/permission" title="Appointment Schedule" :freeze-id="true" :freeze-actions="true">
         <!-- ACTIONS HEADER SLOT (Optional) -->
         <template #header-actions>
             <Button label="New" icon="pi pi-plus" size="small" />
@@ -23,11 +23,11 @@ const handleReload = () => {
 
         <!-- OPTIONAL: Add Edit Buttons at the end -->
         <template #actions>
-            <!-- <Column header="Actions" alignFrozen="right" frozen style="width: 5rem">
+            <Column header="Actions" alignFrozen="right" frozen style="width: 5rem">
                 <template #body>
                     <Button icon="pi pi-pencil" text rounded severity="secondary" />
                 </template>
-            </Column> -->
+            </Column>
         </template>
     </BaseDataTable>
 </template>

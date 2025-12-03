@@ -104,8 +104,7 @@ api.interceptors.response.use(
         // 401 Logic (Existing Strong Logic)
         if (error.response.status === 401 && !originalRequest._retry) {
             if (originalRequest.url.includes('/refresh') || originalRequest.url.includes('/login')) {
-                auth.removeToken();
-                localStorage.clear();
+                auth.logout();
                 router.push('/auth/login');
                 return Promise.reject(error);
             }
@@ -142,7 +141,7 @@ api.interceptors.response.use(
                 }
             } catch (err) {
                 processQueue(err, null);
-                auth.removeToken();
+                auth.logout();
                 localStorage.clear();
                 router.push('/auth/login');
                 return Promise.reject(err);

@@ -1,7 +1,26 @@
 import { updatePreset, updateSurfacePalette } from '@primeuix/themes';
 import { computed, reactive, ref } from 'vue';
 
-// 1. Default Palettes (We make this a reactive ref so we can push admin colors to it)
+// 1. Singleton State (Shared across the app)
+const layoutConfig = reactive({
+    preset: 'Aura',
+    primary: 'emerald',
+    surface: 'slate',
+    darkTheme: false,
+    menuMode: 'static'
+});
+
+const layoutState = reactive({
+    staticMenuDesktopInactive: false,
+    overlayMenuActive: false,
+    profileSidebarVisible: false,
+    configSidebarVisible: false,
+    staticMenuMobileActive: false,
+    menuHoverActive: false,
+    activeMenuItem: null
+});
+
+// 2. Color Definitions
 const primaryColors = ref([
     { name: 'emerald', palette: { 50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b', 950: '#022c22' } },
     { name: 'green', palette: { 50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0', 300: '#86efac', 400: '#4ade80', 500: '#22c55e', 600: '#16a34a', 700: '#15803d', 800: '#166534', 900: '#14532d', 950: '#052e16' } },
@@ -33,30 +52,12 @@ const surfaces = ref([
     { name: 'ocean', palette: { 0: '#ffffff', 50: '#fbfcfc', 100: '#F7F9F8', 200: '#EFF3F2', 300: '#DADEDD', 400: '#B1B7B6', 500: '#828787', 600: '#5F7274', 700: '#415B61', 800: '#29444E', 900: '#183240', 950: '#0c1920' } }
 ]);
 
-const layoutConfig = reactive({
-    preset: 'Aura',
-    primary: 'emerald',
-    surface: null,
-    darkTheme: false,
-    menuMode: 'static'
-});
-
-const layoutState = reactive({
-    staticMenuDesktopInactive: false,
-    overlayMenuActive: false,
-    profileSidebarVisible: false,
-    configSidebarVisible: false,
-    staticMenuMobileActive: false,
-    menuHoverActive: false,
-    activeMenuItem: null
-});
-
 export function useLayout() {
-    // 2. Logic to map colors to PrimeVue Tokens
+    // 3. Logic to map colors to PrimeVue Tokens
     const getPresetExt = () => {
         const color = primaryColors.value.find((c) => c.name === layoutConfig.primary);
 
-        if (!color) return {}; // Safety fallback
+        if (!color) return {};
 
         if (color.name === 'noir') {
             return {
@@ -145,14 +146,17 @@ export function useLayout() {
         }
     };
 
-    // 3. THE BACKEND INJECTION FUNCTION
+    // 4. THE BACKEND INJECTION FUNCTION
     const setBackendTheme = (data) => {
         // A. Handle Custom Admin Palette Injection
-        // If the backend sends a full palette object, we add it to our list
         if (data.customPrimaryPalette && data.primary) {
-            // Check if it already exists to avoid duplicates
-            const exists = primaryColors.value.find((c) => c.name === data.primary);
-            if (!exists) {
+            const existingIndex = primaryColors.value.findIndex((c) => c.name === data.primary);
+
+            if (existingIndex !== -1) {
+                // FIX: Update the existing palette if it's already there
+                primaryColors.value[existingIndex].palette = data.customPrimaryPalette;
+            } else {
+                // Add new palette
                 primaryColors.value.push({
                     name: data.primary,
                     palette: data.customPrimaryPalette
@@ -169,6 +173,7 @@ export function useLayout() {
         }
 
         // C. Apply the Theme via PrimeVue
+        // Now getPresetExt() will see the updated colors!
         updatePreset(getPresetExt());
 
         if (layoutConfig.surface) {
@@ -177,10 +182,6 @@ export function useLayout() {
                 updateSurfacePalette(surfaceObj.palette);
             }
         }
-    };
-
-    const setActiveMenuItem = (item) => {
-        layoutState.activeMenuItem = item.value || item;
     };
 
     const toggleDarkMode = () => {
@@ -221,9 +222,8 @@ export function useLayout() {
         isDarkTheme,
         getPrimary,
         getSurface,
-        setActiveMenuItem,
         toggleDarkMode,
-        setBackendTheme, // <--- EXPOSED TO APP.VUE
+        setBackendTheme,
         primaryColors,
         surfaces
     };

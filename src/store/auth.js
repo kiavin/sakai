@@ -60,12 +60,6 @@ export const useAuthStore = defineStore('auth', () => {
     // 4. ACTIONS
     // --------------------------------------------------
 
-    // A. Session Management
-
-    // src/store/auth.js
-
-    // src/stores/auth.js
-
     const login = async (credentials) => {
         try {
             const response = await api.post('/v1/iam/auth/login', credentials);
@@ -79,13 +73,7 @@ export const useAuthStore = defineStore('auth', () => {
                 user.isAuthenticated = true;
             }
         } catch (error) {
-            // 1. Log the error for debugging
-            console.group('❌ Auth Store Login Failed');
-            console.error('Full Error Object:', error);
-            console.log('Response Status:', error.response?.status);
-            console.log('Response Data:', error.response?.data);
-            console.groupEnd();
-
+            console.error('Login failed', error);
             // 2. CRITICAL: Throw it again!
             // If you don't do this, the Login.vue component will think login succeeded.
             throw error;
@@ -113,22 +101,33 @@ export const useAuthStore = defineStore('auth', () => {
         }
     };
 
-    const logout = () => {
-        // 1. Clear State
-        setToken(null);
-        user.username = '';
-        user.name = '';
-        user.role = '';
+    const logout = async () => {
+        try {
+            // 1. Call Backend to invalidate token
+            // We do this BEFORE clearing the token so the API wrapper can send the Authorization header
+            await api.post('/v1/iam/auth/logout');
+            console.log('Backend session invalidated');
+        } catch (error) {
+            // We log it but don't stop the logout process
+            console.warn('Backend logout failed, forcing local logout', error);
+        } finally {
+            // 2. Clear Local State & Storage (Always runs)
+            setToken(null);
+            user.username = '';
+            user.name = '';
+            user.role = '';
 
-        // 2. Clear Storage
-        localStorage.clear();
+            // Be careful with localStorage.clear() if you store Theme/Settings there
+            // Safe approach: Remove specific auth keys
+            localStorage.removeItem('user.token');
+            localStorage.removeItem('user_session');
 
-        // 3. Redirect
-        // Prefer router.push for SPA, fallback to window.location if router isn't ready
-        if (router) {
-            router.push('/auth/login');
-        } else {
-            window.location.href = '/auth/login';
+            // 3. Redirect
+            if (router) {
+                router.push('/auth/login');
+            } else {
+                window.location.href = '/auth/login';
+            }
         }
     };
 

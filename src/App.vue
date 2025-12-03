@@ -16,8 +16,8 @@ const handleApiNotification = (event) => {
     // Backend: 'success', 'error', 'warning', 'info'
     // PrimeVue: 'success', 'error', 'warn', 'info'
     const severity = theme === 'warning' ? 'warn' : theme;
-
     // Capitalize for Titles (e.g. 'success' -> 'Success')
+    if (theme === undefined) return;
     const title = theme.charAt(0).toUpperCase() + theme.slice(1);
 
     // 2. ROUTING LOGIC

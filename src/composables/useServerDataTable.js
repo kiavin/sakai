@@ -1,35 +1,29 @@
 import api from '@/utils/axios';
-import { onMounted, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { onMounted, ref, shallowRef, toRaw } from 'vue';
 
 export function useServerDataTable(endpoint) {
-    const route = useRoute();
-    const router = useRouter();
-
     // 1. STATE
-    const data = ref([]);
+    const data = shallowRef([]);
     const columns = ref([]);
     const totalRecords = ref(0);
     const loading = ref(false);
 
-    // 2. PARAMS
-    // src/composables/useServerDataTable.js
-
-    // ...
+    // 2. PARAMS (Defaults only, no URL hydration)
     const lazyParams = ref({
-        first: Number(route.query.first) || 0,
-        rows: Number(route.query['per-page']) || 10,
-        sortField: route.query.sortField || null,
-        sortOrder: Number(route.query.sortOrder) || null,
+        first: 0,
+        rows: 10,
+        sortField: null,
+        sortOrder: null,
         filters: {
-            // CHANGE THIS: Ensure 'value' is undefined, not null, if empty
-            global: { value: route.query['_q'] || null, matchMode: 'contains' }
+            global: { value: null, matchMode: 'contains' }
         }
     });
-    // ...
 
     // 3. FETCH LOGIC
     const loadData = async () => {
+        // Guard: Prevent concurrent fetches
+        if (loading.value) return;
+
         loading.value = true;
 
         try {
@@ -52,43 +46,30 @@ export function useServerDataTable(endpoint) {
 
             const response = await api.get(endpoint, { params: apiParams });
 
-            // 4. MAP RESPONSE
-            // Safely locate the payload wrapper
             const rawData = response.data;
             const payload = rawData.dataPayload || rawData || {};
 
-            console.groupCollapsed(`[DataTable] Loaded Page ${page}`);
-            console.log('Raw Payload:', payload);
-
-            // --- SAFEFGUARDED ASSIGNMENT ---
             let incomingRows = [];
-
-            // Check payload.data first
             if (payload.data) {
                 if (Array.isArray(payload.data)) {
-                    // Standard Array
                     incomingRows = payload.data;
                 } else if (typeof payload.data === 'object') {
-                    // FIX: API returned Object (e.g. {10: {...}, 11: {...}}) instead of Array
-                    // We force convert it back to an Array
                     incomingRows = Object.values(payload.data);
                 }
-            }
-            // Fallback: Payload itself is the list
-            else if (Array.isArray(payload)) {
+            } else if (Array.isArray(payload)) {
                 incomingRows = payload;
             }
 
-            // Use spread syntax to ensure we create a fresh array reference
-            data.value = [...incomingRows];
+            // Assign Data
+            data.value = incomingRows;
 
-            // Extract totals
-            totalRecords.value = payload.totalCount || payload.total || data.value.length || 0;
+            // Assign Totals
+            const newTotal = payload.totalCount || payload.total || data.value.length || 0;
+            if (totalRecords.value !== newTotal) {
+                totalRecords.value = newTotal;
+            }
 
-            console.log('Assigned Rows:', data.value.length);
-            console.groupEnd();
-
-            // 5. AUTO-GENERATE COLUMNS
+            // Auto-Generate Columns
             if (columns.value.length === 0 && data.value.length > 0) {
                 const firstItem = data.value[0];
                 const ignoredKeys = ['id', 'uuid', 'password', 'deleted_at', 'paginationLinks', 'meta', 'links'];
@@ -104,27 +85,9 @@ export function useServerDataTable(endpoint) {
                     }));
             }
 
-            // 6. SYNC TO BROWSER URL
-            const queryParams = {
-                ...route.query,
-                page: page,
-                'per-page': lazyParams.value.rows
-            };
-
-            if (apiParams['_q']) queryParams['_q'] = apiParams['_q'];
-            else delete queryParams['_q'];
-
-            if (apiParams['sort']) {
-                queryParams.sortField = lazyParams.value.sortField;
-                queryParams.sortOrder = lazyParams.value.sortOrder;
-            } else {
-                delete queryParams.sortField;
-                delete queryParams.sortOrder;
-            }
-
-            router.replace({ query: queryParams });
+            // Removed URL Sync logic entirely
         } catch (error) {
-            console.error('DataTable Error:', error);
+            console.error('DataTable API Failed:', error);
             data.value = [];
             totalRecords.value = 0;
         } finally {
@@ -133,21 +96,38 @@ export function useServerDataTable(endpoint) {
     };
 
     // 7. EVENT HANDLERS
+
     const onPage = (event) => {
+        // Guard: Strict Equality Check
+        if (lazyParams.value.first === event.first && lazyParams.value.rows === event.rows) {
+            return;
+        }
         lazyParams.value.first = event.first;
         lazyParams.value.rows = event.rows;
         loadData();
     };
 
     const onSort = (event) => {
+        // Guard: Strict Equality Check
+        if (lazyParams.value.sortField === event.sortField && lazyParams.value.sortOrder === event.sortOrder) {
+            return;
+        }
         lazyParams.value.sortField = event.sortField;
         lazyParams.value.sortOrder = event.sortOrder;
         loadData();
     };
 
     const onFilter = (event) => {
+        // Guard: Deep Check for Filters
+        const currentFilters = JSON.stringify(toRaw(lazyParams.value.filters));
+        const newFilters = JSON.stringify(event.filters);
+
+        if (currentFilters === newFilters) {
+            return;
+        }
+
         lazyParams.value.filters = event.filters;
-        lazyParams.value.first = 0;
+        lazyParams.value.first = 0; // Reset to page 1
         loadData();
     };
 

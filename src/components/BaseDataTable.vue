@@ -15,8 +15,9 @@ const props = defineProps({
     showDelete: { type: Boolean, default: true },
     // Row Config
     showId: { type: Boolean, default: true },
-    // [NEW] Text Truncation Limit
-    textMaxLength: { type: Number, default: 60 }
+    textMaxLength: { type: Number, default: 60 },
+    freezeId: { type: Boolean, default: false }, // Pin ID to Left
+    freezeActions: { type: Boolean, default: true } // Pin Actions to Right
 });
 
 // 2. EMITS
@@ -104,6 +105,8 @@ onUnmounted(() => {
             class="p-datatable-sm"
             rowHover
             stripedRows
+            scrollable
+            scrollHeight="630px"
         >
             <template #loading>
                 <div class="flex flex-col gap-3 p-4">
@@ -116,7 +119,7 @@ onUnmounted(() => {
             </template>
 
             <!-- ROW ID COLUMN -->
-            <Column v-if="showId" header="#" headerStyle="width: 3rem">
+            <Column v-if="showId" header="#" headerStyle="width: 3rem" :frozen="freezeId" alignFrozen="left" :class="{ 'font-bold bg-surface-50 dark:bg-surface-800': freezeId }">
                 <template #body="slotProps">
                     <span class="text-muted-color text-sm">
                         {{ lazyParams.first + slotProps.index + 1 }}
@@ -137,7 +140,7 @@ onUnmounted(() => {
             </Column>
 
             <!-- ACTIONS COLUMN -->
-            <Column v-if="showActions" header="Actions" alignFrozen="right" frozen style="min-width: 120px; width: 1%; white-space: nowrap">
+            <Column v-if="showActions" header="Actions" :frozen="freezeActions" alignFrozen="right" style="min-width: 120px; width: 1%; white-space: nowrap">
                 <template #body="{ data }">
                     <div class="flex items-center justify-end gap-2">
                         <Button v-if="showView" icon="pi pi-eye" text rounded severity="info" @click="emit('view', data)" aria-label="View" />
