@@ -1,6 +1,6 @@
-# 🚀 Sakai Enterprise - Developer Documentation
+# 🚀 Sakai - Developer Documentation
 
-**Sakai Enterprise** is an API-first, opinionated Vue 3 admin template designed for scalability and performance. Unlike standard templates, it relies on the backend for configuration, validation, and theming, minimizing frontend boilerplate.
+**Sakai** is an API-first, opinionated Vue 3 admin template designed for scalability and performance. Unlike standard templates, it relies on the backend for configuration, validation, and theming, minimizing frontend boilerplate.
 
 ---
 
