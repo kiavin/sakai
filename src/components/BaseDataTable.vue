@@ -16,8 +16,8 @@ const props = defineProps({
     // Row Config
     showId: { type: Boolean, default: true },
     textMaxLength: { type: Number, default: 60 },
-    freezeId: { type: Boolean, default: false }, // Pin ID to Left
-    freezeActions: { type: Boolean, default: true } // Pin Actions to Right
+    freezeId: { type: Boolean, default: false },
+    freezeActions: { type: Boolean, default: true }
 });
 
 // 2. EMITS
@@ -29,7 +29,7 @@ const { data, columns, totalRecords, loading, lazyParams, onPage, onSort, onFilt
 defineExpose({ refresh });
 
 // ... Search Logic ...
-const searchValue = ref(lazyParams.value.filters.global.value || '');
+const searchValue = ref('');
 let searchTimeout = null;
 
 const onSearchInput = (event) => {
@@ -37,18 +37,22 @@ const onSearchInput = (event) => {
     searchValue.value = val;
     if (searchTimeout) clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
+        // FIXED: Update lazyParams and call loadData directly
         lazyParams.value.filters.global.value = val;
-        onFilter({ filters: lazyParams.value.filters });
+        lazyParams.value.first = 0; // Reset to page 1
+        refresh(); // Call loadData directly instead of onFilter
     }, 600);
 };
 
 const clearSearch = () => {
     searchValue.value = '';
+    // FIXED: Update lazyParams and call loadData directly
     lazyParams.value.filters.global.value = null;
-    onFilter({ filters: lazyParams.value.filters });
+    lazyParams.value.first = 0;
+    refresh(); // Call loadData directly instead of onFilter
 };
 
-// [NEW] Truncation Helper
+// Truncation Helper
 const truncateText = (value) => {
     if (!value) return '';
     const str = String(value);
@@ -58,7 +62,7 @@ const truncateText = (value) => {
     return str;
 };
 
-// [NEW] Tooltip Helper (Only show tooltip if text is actually truncated)
+// Tooltip Helper
 const getTooltip = (value) => {
     if (!value) return null;
     const str = String(value);
@@ -131,7 +135,6 @@ onUnmounted(() => {
             <Column v-for="col in columns" :key="col.field" :field="col.field" :header="col.header" sortable>
                 <template #body="slotProps">
                     <slot :name="`cell-${col.field}`" :data="slotProps.data">
-                        <!-- [NEW] Default Text Render with Truncation & Tooltip -->
                         <span v-tooltip.top="getTooltip(slotProps.data[col.field])" :class="{ 'cursor-help border-b border-dashed border-surface-300': getTooltip(slotProps.data[col.field]) }">
                             {{ truncateText(slotProps.data[col.field]) }}
                         </span>
