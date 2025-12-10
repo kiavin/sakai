@@ -1,225 +1,225 @@
-# Sakai Enterprise - Dynamic Admin Template
+Sakai Enterprise - Developer Documentation
 
-**Sakai Enterprise** is a robust, backend-driven Vue 3 admin dashboard built on top of PrimeVue. It extends the standard Sakai template with enterprise-grade features including RBAC permission management, resilient authentication, automated error handling, and a dynamic theming engine.
+Sakai Enterprise is an API-first, opinionated Vue 3 admin template designed for scalability and performance. Unlike standard templates, it relies on the backend for configuration, validation, and theming, minimizing frontend boilerplate.
 
----
+📚 Table of Contents
 
-## 🚀 Key Features
+Core Architecture
 
-* **Backend-Driven Theming:** The API controls the primary color, dark mode, font family, and favicon. Includes an 11-shade palette generator for custom admin branding.
+API Wrapper (Axios)
 
-* **Resilient Authentication:** Custom Axios wrapper with a "Refresh Token Queue" to handle concurrent 401 errors without race conditions.
+Authentication Store
 
-* **Dynamic Access Control:** Specialized "PickList" component for managing Roles & Permissions assignment with complex UI requirements (distinct icons, search, grouping).
+Dynamic Configuration & Theming
 
-* **Automated Form Validation:** Zod + VeeValidate integration that automatically maps backend `422` JSON errors to UI input fields.
+UI Components
 
-* **Global Systems:**
-    * **System Banner:** Global announcement bar (Warn/Info/Error) controlled by admin settings.
-    * **Native Loader:** Indeterminate progress bar integrated with all API calls (replacing NProgress).
-    * **Auto-Logout:** Idle timer based on backend configuration.
+BaseDataTable (Server-Side)
 
-* **Master-Detail Settings:** A vertical tab interface for managing system configurations.
+Global Command Palette
 
----
+System Banners & Alerts
 
-## 📂 Project Architecture
+Utilities
 
-### State Management (Pinia)
+Form Error Handling
 
-We utilize the **Setup Store** pattern. Stores are centralized in `src/stores/`.
+Binary File Downloads
 
-| Store Name | Purpose |
-| :--- | :--- |
-| **`config.js`** | **The Orchestrator.** Fetches system config on app load. Distributes data to Layout, Banner, and Auth stores. |
-| **`auth.js`** | Manages User Profile (`user`), Session (`token`), and Actions (`login`, `logout`, `validateSession`). |
-| **`banner.js`** | Controls the global announcement bar state (`active`, `message`, `severity`). |
-| **`loader.js`** | Simple counter-based store to manage the global HTTP progress bar. |
+1. Core Architecture
 
-### Core Utilities (`src/utils/`)
+API Wrapper
 
-#### 1. API Wrapper (`api.js`)
+File: src/utils/api.js
 
-A customized Axios instance located at `src/utils/api.js`.
+A centralized Axios instance that acts as the gateway for all HTTP requests. It handles authentication, global error notifications, and loading states automatically.
 
-* **Header Injection:** Automatically adds `Authorization: Bearer <token>`.
-* **Refresh Queue:** If a 401 occurs, requests are paused/queued while a new token is fetched, then retried automatically.
-* **Global Error Event:** Dispatches `window.dispatchEvent('api-error')` for 500/Network errors (handled by `App.vue`).
-* **Loader Integration:** Automatically triggers the Global Progress Bar.
+Key Features
 
-**Usage:**
-```javascript
+Token Injection: Automatically attaches Authorization: Bearer <token> from the Auth Store.
+
+Refresh Token Queue: If a 401 Unauthorized occurs, requests are paused and queued while the app attempts to refresh the token. Once refreshed, queued requests are retried seamlessly.
+
+Global Loader: Triggers the top-bar progress indicator (useLoaderStore) for every request.
+
+Unified Notifications: Listens for alertifyPayload in API responses to trigger global Toasts or Modals.
+
+Usage
+
 import api from '@/utils/api';
 
-// Standard call (Loader shows automatically)
-const res = await api.get('/users');
+// GET Request (Loader shows automatically)
+const response = await api.get('/users');
 
-// Call without triggering the Global Loader (e.g., polling)
-const res = await api.get('/notifications', { headers: { 'X-No-Loader': true } });
-```
+// GET Request (Background - No Loader)
+const response = await api.get('/notifications', { headers: { 'X-No-Loader': true } });
 
-#### 2. Form Error Mapper (`form.js`)
+// POST Request
+await api.post('/users', userData);
 
-Maps backend validation errors (Laravel/Node style) to VeeValidate fields.
-```javascript
+Authentication Store
+
+File: src/store/auth.js
+
+Manages user sessions, profile data, and login/logout lifecycles.
+
+Key Features
+
+Unified State: Holds both Session data (Tokens) and Profile data (Name, Role, Permissions).
+
+Async Logout: Calls the backend /logout endpoint first, then strictly cleans up LocalStorage and Pinia state in the finally block to prevent "zombie" sessions.
+
+RBAC Helper: hasRole('Admin') for permission checks.
+
+Usage
+
+import { useAuthStore } from '@/store/auth';
+
+const auth = useAuthStore();
+
+// Login
+await auth.login({ username: 'admin', password: '...' });
+
+// Check Permission
+if (auth.hasRole('Editor')) { ... }
+
+// Logout (Redirects to /login automatically)
+await auth.logout();
+
+Dynamic Configuration & Theming
+
+Files: src/store/config.js, src/layout/composables/layout.js
+
+The application theme is controlled by the Backend API.
+
+Fetching Config: On app load, configStore.fetchConfig() hits the API.
+
+Applying Theme: layout.js receives the configuration (e.g., Primary Hex Color). It generates a 11-shade palette (50-950) dynamically and injects them as CSS variables (--p-primary-500, etc.).
+
+Real-time Preview: The Admin Settings page allows live previewing of colors without saving.
+
+2. UI Components
+
+BaseDataTable
+
+File: src/components/BaseDataTable.vue
+Composable: src/composables/useServerDataTable.js
+
+A high-performance wrapper around PrimeVue's DataTable designed for Server-Side operations. It solves common issues like duplicate fetching and reactivity loops.
+
+Capabilities
+
+Server-Side Logic: Pagination, Sorting, and Filtering are executed by the API.
+
+Auto-Columns: Can automatically generate columns from the API response keys if no columns are defined.
+
+Performance: Uses shallowRef and markRaw to handle large datasets without freezing the UI.
+
+Utilities: Built-in Text Truncation, Tooltips, and Row Counter.
+
+Usage Example
+
+Minimal (Auto-Columns):
+
+<BaseDataTable 
+    endpoint="/v1/users" 
+    title="User Management" 
+/>
+
+Customized (Manual Columns & Actions):
+
+<script setup>
+import BaseDataTable from '@/components/BaseDataTable.vue';
+</script>
+
+<template>
+    <BaseDataTable 
+        endpoint="/v1/products" 
+        title="Inventory"
+        :freeze-actions="true"
+    >
+        <!-- Custom Header Buttons -->
+        <template #header-actions>
+            <Button label="Export" icon="pi pi-download" />
+        </template>
+
+        <!-- Custom Column Rendering -->
+        <template #cell-price="{ data }">
+            <span class="text-green-500 font-bold">${{ data.price }}</span>
+        </template>
+
+        <!-- Extra Row Actions -->
+        <template #actions="{ data }">
+            <Button icon="pi pi-cog" text rounded @click="configure(data)" />
+        </template>
+    </BaseDataTable>
+
+</template>
+
+Global Command Palette
+
+File: src/components/GlobalCommandPalette.vue
+
+A "Spotlight-style" search modal triggered by Ctrl+K. It scrapes the Vue Router configuration to build a searchable index of pages.
+
+Trigger: Ctrl + K (or Cmd + K)
+
+Navigation: Uses Arrow keys + Enter.
+
+Configuration: Add meta: { breadcrumb: [...] } to routes in router/index.js to include them in the search results.
+
+System Banners & Alerts
+
+File: src/layout/AppSystemBanner.vue
+
+A global communication bar that sits at the top of the layout.
+
+Trigger: Backend response includes alertifyPayload.
+
+Types:
+
+type: 'toast' -> Shows a PrimeVue Toast notification.
+
+type: 'alert' -> Shows a SweetAlert-style blocking modal.
+
+3. Utilities
+
+Form Error Handling
+
+File: src/utils/form.js
+
+Maps backend 422 Unprocessable Entity responses directly to VeeValidate fields. This eliminates the need for duplicated frontend validation logic (regex, etc.).
+
+Usage
+
+import { useForm } from 'vee-validate';
 import { setApiErrors } from '@/utils/form';
+import api from '@/utils/api';
 
-// Inside your form submit catch block:
-catch (error) {
-    // Automatically sets red text on inputs based on 422 response
-    setApiErrors(error, setErrors);
+const { defineField, handleSubmit, setErrors } = useForm();
+const [email] = defineField('email');
+
+const submit = handleSubmit(async (values) => {
+try {
+await api.post('/login', values);
+} catch (error) {
+// Automatically highlights the 'email' input in red
+// with the message returned by the server
+setApiErrors(error, setErrors);
 }
-```
-
-### Components
-
-#### 1. Access Control PickList
-
-**File:** `src/components/AccessControlPickList.vue`
-
-A specialized dual-list component for assigning Roles and Permissions.
-
-* **Visuals:** Distinguishes items with specific icons (ID Card for Roles, Key for Permissions) and color badges.
-* **Logic:** Accepts 4 separate arrays from the API (availableRoles, availablePermissions, etc.), merges them for the UI, and separates them back out upon saving.
-* **Events:** `@save(payload)` emits `{ roles: [...], permissions: [...] }`.
-
-#### 2. System Banner
-
-**File:** `src/layout/AppSystemBanner.vue`
-
-A dismissible alert bar that sits at the very top of the layout (above the Topbar).
-
-* **Controlled by:** `useBannerStore()`
-* **Severity:** Info (Blue), Warn (Orange), Error (Red), Success (Green).
-* **Behavior:** Pushes the application layout down when active.
-
-#### 3. Admin Settings Page
-
-**File:** `src/views/pages/AdminSettings.vue`
-
-A Master-Detail layout for global system configuration.
-
-* **Branding Tab:** Includes a "Live Preview" where admins can pick one HEX color, and the system generates the 11 PrimeVue CSS variables dynamically.
-* **Security Tab:** Configures the Session Timeout slider.
-* **Announcements Tab:** Live controls for the System Banner.
-
-#### 4. User Profile
-
-**File:** `src/views/pages/UserProfile.vue`
-
-* **Features:** Avatar upload simulation with hover overlay, Password Strength meter, Read-only Role display.
-
----
-
-## 🎨 Dynamic Theming Engine
-
-The theming logic resides in `src/layout/composables/layout.js`.
-
-Unlike standard Sakai, this version exports a `setBackendTheme(config)` function.
-
-**Expected Backend JSON Payload:**
-```json
-{
-    "primary": "custom-brand",
-    "surface": "slate",
-    "darkTheme": true,
-    "customPrimaryPalette": {
-        "50": "#fbfcfc",
-        "500": "#your-brand-color",
-        "950": "#0c1920"
-    }
-}
-```
-
-> **Note:** If `customPrimaryPalette` is present, it injects the colors into PrimeVue's Design Token system instantly.
-
----
-
-## 🛠 Setup & Installation
-
-### 1. Install Dependencies
-```bash
-npm install
-npm install zod vee-validate @vee-validate/zod pinia axios primevue primeicons
-```
-
-> **Note:** NProgress was removed in favor of native PrimeVue ProgressBar to avoid strict-mode errors.
-
-### 2. Configure Environment
-
-Create a `.env` file in the root:
-```env
-VITE_API_BASE_URL=http://localhost:8000/api
-```
-
-### 3. Register Global Services
-
-Ensure `src/main.js` registers the required PrimeVue services:
-```javascript
-import ToastService from 'primevue/toastservice';
-import DialogService from 'primevue/dialogservice';
-
-app.use(ToastService);
-app.use(DialogService);
-```
-
-### 4. Router Integration
-
-Ensure `src/router/index.js` handles Loader visual cues on route change:
-```javascript
-import { useLoaderStore } from '@/stores/loader';
-
-router.beforeEach((to, from, next) => {
-    const loader = useLoaderStore();
-    loader.startLoading();
-    next();
 });
 
-router.afterEach(() => {
-    const loader = useLoaderStore();
-    loader.stopLoading();
-});
-```
+Binary File Downloads
 
----
+File: src/utils/download.js
 
-## 📝 Developer Guidelines
+A wrapper to safely download binary files (PDF, Excel) from the API. It handles the Blob conversion and extracts the filename from the Content-Disposition header.
 
-### Adding a New Page
+Usage
 
-1. Create the view in `src/views/pages/`.
-2. Add the route in `src/router/index.js`.
-3. Do not fetch data in `App.vue`. Fetch data inside the page `onMounted` or use a specific store.
+import { downloadFile } from '@/utils/download';
 
-### Handling Forms
-
-1. Define a schema using `toTypedSchema` and `zod`.
-2. Use `useForm` from `vee-validate`.
-3. Bind inputs using `defineField`.
-4. Always include `setApiErrors` in your error handling.
-
-### Handling Modals
-
-Do not use `<Dialog>` directly inside components if possible.
-
-Use the `useDialog()` composable for opening modals programmatically to keep the DOM light.
-```javascript
-import { useDialog } from 'primevue/usedialog';
-const dialog = useDialog();
-dialog.open(MyComponent, { header: 'Edit Item' });
-```
-
----
-
-## 🔒 Security
-
-* **XSS Protection:** Zod sanitation handles basic input validation.
-* **CSRF:** Axios `withCredentials: true` is enabled by default.
-* **RBAC:** Use the `user.role` from `authStore` to conditionally render UI elements.
-
-**Example:**
-```vue
-<Button v-if="authStore.hasRole('Admin')" />
-```
-
----
+const exportData = async () => {
+// Downloads 'report.pdf' automatically
+await downloadFile('/v1/reports/export/pdf');
+};
