@@ -4,30 +4,35 @@ import { ref } from 'vue';
 
 const tableRef = ref(null);
 
-const handleReload = () => {
-    tableRef.value.refresh();
+const handleView = (data) => {
+    console.log('View:', data);
+};
+
+const handleEdit = (data) => {
+    console.log('Edit:', data);
+};
+
+const handleDelete = (data) => {
+    console.log('Delete:', data);
 };
 </script>
 
 <template>
-    <BaseDataTable endpoint="/v1/iam/rbac/permission" title="Appointment Schedule" :freeze-id="true" :freeze-actions="true">
-        <!-- ACTIONS HEADER SLOT (Optional) -->
+    <BaseDataTable ref="tableRef" endpoint="/v1/iam/rbac/permission" title="Permissions Management" :freeze-id="true" :freeze-actions="true" @view="handleView" @edit="handleEdit" @delete="handleDelete">
+        <!-- Custom header actions -->
         <template #header-actions>
             <Button label="New" icon="pi pi-plus" size="small" />
-            <Button icon="pi pi-refresh" text rounded @click="handleReload" />
+            <Button icon="pi pi-refresh" text rounded @click="tableRef.refresh()" />
         </template>
-        <!-- OPTIONAL: Customize 'ruleName' column -->
+
+        <!-- Customize specific column -->
         <template #cell-ruleName="{ data }">
             <span class="font-bold text-primary">{{ data.ruleName || 'N/A' }}</span>
         </template>
 
-        <!-- OPTIONAL: Add Edit Buttons at the end -->
-        <template #actions>
-            <Column header="Actions" alignFrozen="right" frozen style="width: 5rem">
-                <template #body>
-                    <Button icon="pi pi-pencil" text rounded severity="secondary" />
-                </template>
-            </Column>
+        <!-- Add extra action buttons -->
+        <template #actions="{ data }">
+            <Button icon="pi pi-cog" text rounded severity="secondary" @click="console.log('Config:', data)" />
         </template>
     </BaseDataTable>
 </template>
