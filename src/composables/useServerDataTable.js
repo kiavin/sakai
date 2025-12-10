@@ -1,5 +1,5 @@
 import api from '@/utils/axios';
-import { onMounted, ref, shallowRef, toRaw } from 'vue';
+import { onMounted, ref, shallowRef } from 'vue';
 
 export function useServerDataTable(endpoint) {
     // 1. STATE
@@ -69,7 +69,7 @@ export function useServerDataTable(endpoint) {
                 totalRecords.value = newTotal;
             }
 
-            // Auto-Generate Columns
+            // Auto-Generate Columns (ONLY ONCE)
             if (columns.value.length === 0 && data.value.length > 0) {
                 const firstItem = data.value[0];
                 const ignoredKeys = ['id', 'uuid', 'password', 'deleted_at', 'paginationLinks', 'meta', 'links'];
@@ -84,8 +84,6 @@ export function useServerDataTable(endpoint) {
                             .replace(/\b\w/g, (l) => l.toUpperCase())
                     }));
             }
-
-            // Removed URL Sync logic entirely
         } catch (error) {
             console.error('DataTable API Failed:', error);
             data.value = [];
@@ -95,15 +93,21 @@ export function useServerDataTable(endpoint) {
         }
     };
 
-    // 7. EVENT HANDLERS
+    // 4. EVENT HANDLERS - FIXED TO PREVENT INFINITE LOOPS
 
     const onPage = (event) => {
         // Guard: Strict Equality Check
         if (lazyParams.value.first === event.first && lazyParams.value.rows === event.rows) {
             return;
         }
-        lazyParams.value.first = event.first;
-        lazyParams.value.rows = event.rows;
+
+        // CRITICAL FIX: Create new object reference instead of mutating
+        lazyParams.value = {
+            ...lazyParams.value,
+            first: event.first,
+            rows: event.rows
+        };
+
         loadData();
     };
 
@@ -112,29 +116,43 @@ export function useServerDataTable(endpoint) {
         if (lazyParams.value.sortField === event.sortField && lazyParams.value.sortOrder === event.sortOrder) {
             return;
         }
-        lazyParams.value.sortField = event.sortField;
-        lazyParams.value.sortOrder = event.sortOrder;
+
+        // CRITICAL FIX: Create new object reference instead of mutating
+        lazyParams.value = {
+            ...lazyParams.value,
+            sortField: event.sortField,
+            sortOrder: event.sortOrder
+        };
+
         loadData();
     };
 
     const onFilter = (event) => {
-        // Guard: Deep Check for Filters
-        const currentFilters = JSON.stringify(toRaw(lazyParams.value.filters));
-        const newFilters = JSON.stringify(event.filters);
+        // CRITICAL FIX: Compare actual values instead of JSON stringify
+        const currentGlobalValue = lazyParams.value.filters?.global?.value;
+        const newGlobalValue = event.filters?.global?.value;
 
-        if (currentFilters === newFilters) {
+        // Guard: Prevent unnecessary updates
+        if (currentGlobalValue === newGlobalValue) {
             return;
         }
 
-        lazyParams.value.filters = event.filters;
-        lazyParams.value.first = 0; // Reset to page 1
+        // CRITICAL FIX: Create new object reference instead of mutating
+        lazyParams.value = {
+            ...lazyParams.value,
+            filters: event.filters,
+            first: 0 // Reset to page 1 on filter change
+        };
+
         loadData();
     };
 
+    // 5. INITIALIZE ON MOUNT
     onMounted(() => {
         loadData();
     });
 
+    // 6. RETURN API
     return {
         data,
         columns,
