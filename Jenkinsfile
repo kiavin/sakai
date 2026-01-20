@@ -37,7 +37,7 @@ pipeline {
                 // Use SSH key stored in Jenkins for frontend VM
                 sshagent(['FRONTEND_SSH']) {
                     // Pull the VM IP from Jenkins secret
-                    withCredentials([string(credentialsId: 'FRONTEND_VM', variable: 'TARGET_VM')]) {
+                    withCredentials([string(credentialsId: 'vue-vm34', variable: 'TARGET_VM')]) {
                         script {
                             echo "--- Deploying ${APP_NAME} to ${TARGET_VM} ---"
                             sh """
